@@ -6,7 +6,6 @@ import com.ion.common.exception.ErrorCode;
 import com.ion.common.exception.IonException;
 import com.ion.llm.dto.ChatCompletionChunk;
 import com.ion.llm.dto.ChatCompletionRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -15,11 +14,14 @@ import reactor.core.publisher.Flux;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class OpenAiCompatibleClient {
 
     private final WebClient llmWebClient;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public OpenAiCompatibleClient(WebClient llmWebClient) {
+        this.llmWebClient = llmWebClient;
+    }
 
     public Flux<String> streamChat(ChatCompletionRequest request) {
         return llmWebClient.post()

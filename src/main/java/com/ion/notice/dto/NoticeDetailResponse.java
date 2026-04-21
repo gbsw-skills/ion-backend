@@ -6,6 +6,7 @@ public record NoticeDetailResponse(
         Long id,
         String title,
         String content,
+        String authorName,
         Instant publishedAt,
         Instant createdAt
 ) {}

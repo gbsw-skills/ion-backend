@@ -1,0 +1,35 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:ion;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+
+  flyway:
+    enabled: false
+
+ion:
+  jwt:
+    secret: ion-test-secret-key-must-be-at-least-256-bits-long-for-tests-12345
+    access-expiry: 900
+    refresh-expiry: 1209600
+
+  llm:
+    base-url: http://localhost:11434
+    api-key: test
+    model: ion-model
+    system-prompt: test prompt
+    temperature: 0.7
+    max-tokens: 256
+
+  storage:
+    documents-dir: ./build/test-documents

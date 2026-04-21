@@ -1,4 +1,4 @@
-package com.ion.notice.domain;
+package com.ion.admin.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,37 +8,31 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.Instant;
 
 @Entity
-@Table(name = "notices")
+@Table(name = "admin_logs")
 @EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Builder
 @AllArgsConstructor
-public class Notice {
+@Builder
+public class AdminLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 300)
-    private String title;
+    @Column(name = "admin_id", nullable = false)
+    private Long adminId;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String content;
+    @Column(nullable = false, length = 100)
+    private String action;
 
-    @Column(name = "author_id")
-    private Long authorId;
+    @Column(name = "target_type", length = 50)
+    private String targetType;
 
-    @Column(name = "published_at")
-    private Instant publishedAt;
+    @Column(name = "target_id")
+    private Long targetId;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
-
-    public void update(String title, String content, Instant publishedAt) {
-        this.title = title;
-        this.content = content;
-        this.publishedAt = publishedAt;
-    }
 }

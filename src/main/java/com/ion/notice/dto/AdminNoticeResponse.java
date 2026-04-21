@@ -2,9 +2,9 @@ package com.ion.notice.dto;
 
 import java.time.Instant;
 
-public record NoticeListItemResponse(
+public record AdminNoticeResponse(
         Long id,
         String title,
-        String authorName,
-        Instant publishedAt
+        Instant publishedAt,
+        Instant createdAt
 ) {}

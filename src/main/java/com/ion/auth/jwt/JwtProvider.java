@@ -17,21 +17,43 @@ public class JwtProvider {
 
     private final SecretKey key;
     private final long accessExpirySeconds;
+    private final long refreshExpirySeconds;
 
     public JwtProvider(
             @Value("${ion.jwt.secret}") String secret,
-            @Value("${ion.jwt.access-expiry}") long accessExpirySeconds) {
+            @Value("${ion.jwt.access-expiry}") long accessExpirySeconds,
+            @Value("${ion.jwt.refresh-expiry}") long refreshExpirySeconds) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessExpirySeconds = accessExpirySeconds;
+        this.refreshExpirySeconds = refreshExpirySeconds;
     }
 
     public String generateAccessToken(Long userId, String role) {
+        return generateToken(userId, role, accessExpirySeconds, "access");
+    }
+
+    public String generateRefreshToken(Long userId, String role) {
+        return generateToken(userId, role, refreshExpirySeconds, "refresh");
+    }
+
+    public boolean validateRefreshToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            return "refresh".equals(claims.get("type", String.class));
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("Invalid refresh JWT: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private String generateToken(Long userId, String role, long expirySeconds, String type) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("role", role)
+                .claim("type", type)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plusSeconds(accessExpirySeconds)))
+                .expiration(Date.from(now.plusSeconds(expirySeconds)))
                 .signWith(key)
                 .compact();
     }

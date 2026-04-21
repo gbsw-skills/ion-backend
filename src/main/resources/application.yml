@@ -22,10 +22,16 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
 ion:
   jwt:
     secret: ${ION_JWT_SECRET:ion-default-secret-key-must-be-at-least-256-bits-long-for-hs256}
     access-expiry: ${ION_JWT_ACCESS_EXPIRY:900}
+    refresh-expiry: ${ION_JWT_REFRESH_EXPIRY:1209600}
 
   llm:
     base-url: ${ION_LLM_BASE_URL:http://localhost:11434}
@@ -34,6 +40,9 @@ ion:
     system-prompt: ${ION_LLM_SYSTEM_PROMPT:당신은 경북소마고 전용 AI 어시스턴트 Ion입니다. 학교 공지사항과 학사 정보를 바탕으로 학생과 교직원을 돕습니다. 항상 한국어로 답변하세요.}
     temperature: ${ION_LLM_TEMPERATURE:0.7}
     max-tokens: ${ION_LLM_MAX_TOKENS:1024}
+
+  storage:
+    documents-dir: ${ION_DOCUMENTS_DIR:./storage/documents}
 
 server:
   port: 8080
