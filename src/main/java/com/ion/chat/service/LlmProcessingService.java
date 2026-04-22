@@ -3,10 +3,11 @@ package com.ion.chat.service;
 import com.ion.chat.domain.ChatMessage;
 import com.ion.chat.repository.ChatMessageRepository;
 import com.ion.llm.client.OpenAiCompatibleClient;
+import com.ion.llm.domain.LlmEndpointConfig;
 import com.ion.llm.dto.ChatCompletionRequest;
+import com.ion.llm.service.LlmEndpointConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,36 +24,26 @@ public class LlmProcessingService {
     private final ChatMessageRepository messageRepository;
     private final OpenAiCompatibleClient llmClient;
     private final SseEmitterService sseEmitterService;
-
-    @Value("${ion.llm.model}")
-    private String model;
-
-    @Value("${ion.llm.system-prompt}")
-    private String systemPrompt;
-
-    @Value("${ion.llm.temperature:0.7}")
-    private double temperature;
-
-    @Value("${ion.llm.max-tokens:1024}")
-    private int maxTokens;
+    private final LlmEndpointConfigService llmEndpointConfigService;
 
     @Async("llmTaskExecutor")
     public void processAsync(UUID sessionId) {
         log.debug("Starting LLM processing for session {}", sessionId);
 
-        List<ChatCompletionRequest.Message> messages = buildMessages(sessionId);
+        LlmEndpointConfig endpoint = llmEndpointConfigService.getDefaultActiveEndpoint();
+        List<ChatCompletionRequest.Message> messages = buildMessages(sessionId, endpoint.getSystemPrompt());
 
         ChatCompletionRequest request = ChatCompletionRequest.builder()
-                .model(model)
+                .model(endpoint.getModel())
                 .messages(messages)
                 .stream(true)
-                .temperature(temperature)
-                .maxTokens(maxTokens)
+                .temperature(endpoint.getTemperature())
+                .maxTokens(endpoint.getMaxTokens())
                 .build();
 
         StringBuilder fullContent = new StringBuilder();
 
-        llmClient.streamChat(request)
+        llmClient.streamChat(endpoint, request)
                 .doOnNext(token -> {
                     fullContent.append(token);
                     sseEmitterService.sendToken(sessionId, token);
@@ -63,13 +54,19 @@ public class LlmProcessingService {
                     log.debug("LLM processing completed for session {}", sessionId);
                 })
                 .doOnError(e -> {
-                    log.error("LLM processing failed for session {}: {}", sessionId, e.getMessage());
-                    sseEmitterService.sendError(sessionId, "LLM_001", "AI 응답 생성에 실패했습니다.");
+                    log.error("LLM processing failed for session {} with endpoint {}: {}", sessionId, endpoint.getName(), e.getMessage());
+                    String errorCode = (e instanceof com.ion.common.exception.IonException ionException)
+                            ? ionException.getErrorCode().name()
+                            : "LLM_001";
+                    String message = (e instanceof com.ion.common.exception.IonException ionException)
+                            ? ionException.getErrorCode().getMessage()
+                            : "AI 응답 생성에 실패했습니다.";
+                    sseEmitterService.sendError(sessionId, errorCode, message);
                 })
                 .subscribe();
     }
 
-    private List<ChatCompletionRequest.Message> buildMessages(UUID sessionId) {
+    private List<ChatCompletionRequest.Message> buildMessages(UUID sessionId, String systemPrompt) {
         List<ChatMessage> history = messageRepository.findTop20BySessionIdOrderByCreatedAtDesc(sessionId);
 
         List<ChatCompletionRequest.Message> messages = new ArrayList<>();

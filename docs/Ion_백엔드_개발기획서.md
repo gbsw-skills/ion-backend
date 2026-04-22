@@ -236,6 +236,22 @@ CREATE INDEX idx_admin_logs_admin_id ON admin_logs(admin_id);
 Ion의 AI 답변 생성은 **OpenAI API 규격 호환 서버**에 요청을 전송하는 방식으로 구현한다.  
 이를 통해 OpenAI GPT, 오픈소스 LLM(Ollama, vLLM 등) 등 어떤 백엔드든 교체 가능하다.
 
+단, 운영 설정은 더 이상 단일 환경변수에 고정하지 않는다.  
+관리자는 **여러 개의 LLM 엔드포인트를 관리자 API에서 직접 등록/수정/삭제**할 수 있어야 하며, 각 엔드포인트는 아래 값을 독립적으로 가진다.
+
+- 엔드포인트 이름
+- Base URL
+- API Key
+- 모델명
+- 시스템 프롬프트
+- Temperature
+- Max Tokens
+- 활성화 여부
+- 기본(Default) 여부
+
+실제 채팅 요청은 **활성화된 기본(Default) 엔드포인트 1개**를 사용한다.  
+환경변수는 애플리케이션 최초 기동 시 DB에 기본 엔드포인트를 생성하기 위한 **bootstrap seed 용도**로만 사용한다.
+
 ### 5.1 요청 규격 — Chat Completions
 
 ```
@@ -307,44 +323,45 @@ data: [DONE]
 @Component
 public class OpenAiCompatibleClient {
 
-    private final WebClient webClient;
+    private final WebClient.Builder webClientBuilder;
 
-    public OpenAiCompatibleClient(@Value("${ion.llm.base-url}") String baseUrl,
-                                   @Value("${ion.llm.api-key}") String apiKey) {
-        this.webClient = WebClient.builder()
-                .baseUrl(baseUrl)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+    public Flux<String> streamChat(LlmEndpointConfig endpoint, ChatCompletionRequest request) {
+        return webClientBuilder
+                .baseUrl(endpoint.getBaseUrl())
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + endpoint.getApiKey())
                 .build();
-    }
-
-    // 스트리밍: SSE 토큰을 Flux<String>으로 반환
-    public Flux<String> streamChat(ChatCompletionRequest request) {
+        
         return webClient.post()
                 .uri("/v1/chat/completions")
                 .bodyValue(request)
                 .retrieve()
                 .bodyToFlux(String.class);
     }
-
-    // 비스트리밍: 전체 응답을 Mono로 반환
-    public Mono<ChatCompletionResponse> chat(ChatCompletionRequest request) {
-        return webClient.post()
-                .uri("/v1/chat/completions")
-                .bodyValue(request)
-                .retrieve()
-                .bodyToMono(ChatCompletionResponse.class);
-    }
 }
 ```
 
-### 5.3 환경변수
+### 5.3 관리자 설정 정책
+
+| 항목 | 정책 |
+|----|------|
+| 설정 저장소 | DB (`llm_endpoint_configs`) |
+| 설정 관리 주체 | 관리자 API |
+| 다중 엔드포인트 | 지원 |
+| 엔드포인트별 독립 설정 | `baseUrl`, `apiKey`, `model`, `systemPrompt`, `temperature`, `maxTokens` |
+| 실제 호출 대상 | `enabled = true` 이면서 `isDefault = true` 인 엔드포인트 |
+| 환경변수 역할 | DB가 비어 있을 때 최초 기본 엔드포인트를 생성하는 bootstrap seed |
+
+### 5.4 Bootstrap 환경변수
 
 | 키 | 예시 값 | 설명 |
 |----|---------|------|
-| `ION_LLM_BASE_URL` | `http://localhost:11434` | LLM 서버 주소 (Ollama 등) |
-| `ION_LLM_API_KEY` | `ollama` | API 키 (불필요 시 임의 문자열) |
-| `ION_LLM_MODEL` | `ion-model` | 사용할 모델명 |
-| `ION_LLM_SYSTEM_PROMPT` | `"당신은 Ion입니다..."` | 시스템 프롬프트 |
+| `ION_LLM_BOOTSTRAP_NAME` | `default-ollama` | 최초 기본 엔드포인트 이름 |
+| `ION_LLM_BOOTSTRAP_BASE_URL` | `http://localhost:11434` | 최초 기본 LLM 서버 주소 |
+| `ION_LLM_BOOTSTRAP_API_KEY` | `ollama` | 최초 기본 엔드포인트 API 키 |
+| `ION_LLM_BOOTSTRAP_MODEL` | `ion-model` | 최초 기본 엔드포인트 모델명 |
+| `ION_LLM_BOOTSTRAP_SYSTEM_PROMPT` | `"당신은 Ion입니다..."` | 최초 기본 엔드포인트 시스템 프롬프트 |
+| `ION_LLM_BOOTSTRAP_TEMPERATURE` | `0.7` | 최초 기본 엔드포인트 temperature |
+| `ION_LLM_BOOTSTRAP_MAX_TOKENS` | `1024` | 최초 기본 엔드포인트 max tokens |
 
 ---
 
@@ -534,10 +551,14 @@ ION_JWT_SECRET=your-256-bit-secret
 ION_JWT_ACCESS_EXPIRY=900
 ION_JWT_REFRESH_EXPIRY=604800
 
-# LLM (OpenAI API 규격)
-ION_LLM_BASE_URL=http://localhost:11434
-ION_LLM_API_KEY=ollama
-ION_LLM_MODEL=ion-model
+# LLM bootstrap seed (최초 1회 DB 초기값)
+ION_LLM_BOOTSTRAP_NAME=default-ollama
+ION_LLM_BOOTSTRAP_BASE_URL=http://localhost:11434
+ION_LLM_BOOTSTRAP_API_KEY=ollama
+ION_LLM_BOOTSTRAP_MODEL=ion-model
+ION_LLM_BOOTSTRAP_SYSTEM_PROMPT=당신은 경북소마고 전용 AI 어시스턴트 Ion입니다.
+ION_LLM_BOOTSTRAP_TEMPERATURE=0.7
+ION_LLM_BOOTSTRAP_MAX_TOKENS=1024
 ```
 
 ---

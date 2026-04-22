@@ -595,6 +595,126 @@ data: {"code": "LLM_001", "message": "LLM 서버에 연결할 수 없습니다."
 
 ---
 
+### GET `/api/v1/admin/llm/endpoints` — LLM 엔드포인트 목록 조회
+
+**Response 200 OK**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "default-ollama",
+      "baseUrl": "http://localhost:11434",
+      "apiKey": "ollama",
+      "model": "ion-model",
+      "systemPrompt": "당신은 경북소마고 전용 AI 어시스턴트 Ion입니다.",
+      "temperature": 0.7,
+      "maxTokens": 1024,
+      "enabled": true,
+      "isDefault": true,
+      "createdAt": "2026-04-22T09:00:00Z",
+      "updatedAt": "2026-04-22T09:00:00Z"
+    }
+  ],
+  "error": null,
+  "timestamp": "2026-04-22T09:00:00Z"
+}
+```
+
+---
+
+### GET `/api/v1/admin/llm/endpoints/{id}` — LLM 엔드포인트 상세 조회
+
+**Response 200 OK** — 단건 엔드포인트 정보 반환
+
+---
+
+### POST `/api/v1/admin/llm/endpoints` — LLM 엔드포인트 등록
+
+**Request Body**
+
+```json
+{
+  "name": "gpt-4o-prod",
+  "baseUrl": "https://api.openai.com",
+  "apiKey": "sk-...",
+  "model": "gpt-4o-mini",
+  "systemPrompt": "당신은 경북소마고 전용 AI 어시스턴트 Ion입니다.",
+  "temperature": 0.4,
+  "maxTokens": 2048,
+  "enabled": true,
+  "isDefault": false
+}
+```
+
+**규칙**
+
+| 항목 | 설명 |
+|------|------|
+| `name` | 엔드포인트 식별용 고유 이름 |
+| `baseUrl` | OpenAI 호환 API 서버 주소 |
+| `enabled` | 비활성화 시 채팅 라우팅 대상에서 제외 |
+| `isDefault` | `true`면 기존 기본 엔드포인트의 기본 플래그 해제 |
+| 첫 엔드포인트 생성 | 자동으로 `enabled=true`, `isDefault=true` 처리 |
+
+**Response 201 Created**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 2,
+    "name": "gpt-4o-prod",
+    "baseUrl": "https://api.openai.com",
+    "apiKey": "sk-...",
+    "model": "gpt-4o-mini",
+    "systemPrompt": "당신은 경북소마고 전용 AI 어시스턴트 Ion입니다.",
+    "temperature": 0.4,
+    "maxTokens": 2048,
+    "enabled": true,
+    "isDefault": false,
+    "createdAt": "2026-04-22T09:00:00Z",
+    "updatedAt": "2026-04-22T09:00:00Z"
+  },
+  "error": null,
+  "timestamp": "2026-04-22T09:00:00Z"
+}
+```
+
+---
+
+### PUT `/api/v1/admin/llm/endpoints/{id}` — LLM 엔드포인트 수정
+
+**Request Body** — 등록과 동일
+
+**Response 200 OK** — 수정된 엔드포인트 반환
+
+---
+
+### POST `/api/v1/admin/llm/endpoints/{id}/default` — 기본 엔드포인트 전환
+
+> 대상 엔드포인트는 반드시 `enabled=true` 여야 함
+
+**Response 200 OK** — 기본 엔드포인트로 지정된 엔드포인트 반환
+
+---
+
+### DELETE `/api/v1/admin/llm/endpoints/{id}` — LLM 엔드포인트 삭제
+
+**제약**
+
+| 조건 | 결과 |
+|------|------|
+| 마지막 엔드포인트 삭제 시도 | `400 LLM_005` |
+| 마지막 활성 엔드포인트 삭제 시도 | `400 LLM_005` |
+| 기본 엔드포인트 삭제 | 다른 활성 엔드포인트가 자동 기본값 승격 |
+
+**Response 200 OK**
+
+---
+
 ### GET `/api/v1/admin/logs` — 감사 로그 조회
 
 **Query Parameters**
@@ -650,6 +770,11 @@ data: {"code": "LLM_001", "message": "LLM 서버에 연결할 수 없습니다."
 | `DOCUMENT_003` | 413 | 파일 크기 초과 (50MB 제한) |
 | `LLM_001` | 503 | LLM 서버 연결 실패 |
 | `LLM_002` | 504 | LLM 응답 타임아웃 |
+| `LLM_003` | 503 | 활성화된 기본 LLM 엔드포인트 없음 |
+| `LLM_004` | 409 | 동일한 이름의 LLM 엔드포인트 중복 |
+| `LLM_005` | 400 | 최소 1개의 활성화된 LLM 엔드포인트 필요 |
+| `LLM_006` | 400 | 기본 LLM 엔드포인트는 활성화 상태여야 함 |
+| `LLM_007` | 404 | LLM 엔드포인트를 찾을 수 없음 |
 | `COMMON_001` | 500 | 서버 내부 오류 |
 | `COMMON_002` | 400 | 요청 유효성 검사 실패 (필수 필드 누락 등) |
 
