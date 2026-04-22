@@ -1,9 +1,12 @@
 spring:
+  main:
+    web-application-type: servlet
+
   datasource:
     url: jdbc:h2:mem:ion;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
-    driver-class-name: org.h2.Driver
     username: sa
     password:
+    driver-class-name: org.h2.Driver
 
   jpa:
     hibernate:
@@ -17,6 +20,11 @@ spring:
   flyway:
     enabled: false
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
 ion:
   jwt:
     secret: ion-test-secret-key-must-be-at-least-256-bits-long-for-tests-12345
@@ -24,12 +32,22 @@ ion:
     refresh-expiry: 1209600
 
   llm:
-    base-url: http://localhost:11434
-    api-key: test
-    model: ion-model
-    system-prompt: test prompt
-    temperature: 0.7
-    max-tokens: 256
+    bootstrap:
+      name: test-llm
+      base-url: http://localhost:11434
+      api-key: test
+      model: ion-model
+      system-prompt: test prompt
+      temperature: 0.7
+      max-tokens: 256
 
   storage:
     documents-dir: ./build/test-documents
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.ion: INFO
+    org.springframework.security: WARN
