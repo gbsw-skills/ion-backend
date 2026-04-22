@@ -1,9 +1,12 @@
 spring:
+  main:
+    web-application-type: servlet
+
   datasource:
     url: jdbc:h2:mem:ion;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
-    driver-class-name: org.h2.Driver
     username: sa
     password:
+    driver-class-name: org.h2.Driver
 
   jpa:
     hibernate:
@@ -16,6 +19,11 @@ spring:
 
   flyway:
     enabled: false
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
 
 ion:
   jwt:
@@ -35,3 +43,11 @@ ion:
 
   storage:
     documents-dir: ./build/test-documents
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.ion: INFO
+    org.springframework.security: WARN
