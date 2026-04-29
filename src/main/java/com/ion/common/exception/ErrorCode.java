@@ -20,6 +20,8 @@ public enum ErrorCode {
     DOCUMENT_001(HttpStatus.NOT_FOUND, "문서를 찾을 수 없습니다."),
     DOCUMENT_002(HttpStatus.BAD_REQUEST, "지원하지 않는 파일 형식입니다."),
     DOCUMENT_003(HttpStatus.PAYLOAD_TOO_LARGE, "파일 크기 제한(50MB)을 초과했습니다."),
+    USER_001(HttpStatus.CONFLICT, "동일한 아이디의 사용자가 이미 존재합니다."),
+    USER_002(HttpStatus.BAD_REQUEST, "지원하지 않는 사용자 역할입니다."),
     COMMON_001(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다."),
     COMMON_002(HttpStatus.BAD_REQUEST, "요청 유효성 검사에 실패했습니다.");
 

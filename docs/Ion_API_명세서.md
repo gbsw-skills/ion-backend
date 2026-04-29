@@ -504,6 +504,53 @@ data: {"code": "LLM_001", "message": "LLM 서버에 연결할 수 없습니다."
 
 ---
 
+### POST `/api/v1/admin/users` — 사용자 계정 생성
+
+**Request Body**
+
+```json
+{
+  "username": "student02",
+  "password": "plaintext-password",
+  "role": "STUDENT",
+  "displayName": "홍길동"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| username | string | ✅ | 로그인 ID, 최대 50자 |
+| password | string | ✅ | 비밀번호 (서버에서 BCrypt 해시 저장) |
+| role | string | ✅ | `STUDENT`, `TEACHER`, `ADMIN` |
+| displayName | string | ✅ | 표시 이름, 최대 100자 |
+
+**Response 201 Created**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 44,
+    "username": "student02",
+    "displayName": "홍길동",
+    "role": "STUDENT",
+    "createdAt": "2026-04-29T10:00:00Z"
+  },
+  "error": null,
+  "timestamp": "2026-04-29T10:00:00Z"
+}
+```
+
+**오류 케이스**
+
+| 상황 | HTTP | 에러 코드 |
+|------|------|-----------|
+| 동일한 username 존재 | 409 | `USER_001` |
+| 지원하지 않는 role | 400 | `USER_002` |
+| 요청 형식 오류 | 400 | `COMMON_002` |
+
+---
+
 ### POST `/api/v1/admin/notices` — 공지사항 등록
 
 **Request Body**
