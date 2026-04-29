@@ -28,6 +28,13 @@ spring:
       max-request-size: 50MB
 
 ion:
+  bootstrap:
+    user:
+      username: ${ION_BOOTSTRAP_USERNAME:}
+      password: ${ION_BOOTSTRAP_PASSWORD:}
+      role: ${ION_BOOTSTRAP_ROLE:ADMIN}
+      display-name: ${ION_BOOTSTRAP_DISPLAY_NAME:}
+
   jwt:
     secret: ${ION_JWT_SECRET:ion-default-secret-key-must-be-at-least-256-bits-long-for-hs256}
     access-expiry: ${ION_JWT_ACCESS_EXPIRY:900}

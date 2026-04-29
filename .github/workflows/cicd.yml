@@ -89,8 +89,12 @@ jobs:
               -e SPRING_DATASOURCE_USERNAME=${{ secrets.SPRING_DATASOURCE_USERNAME }} \
               -e SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD }} \
               -e ION_JWT_SECRET=${{ secrets.ION_JWT_SECRET }} \
-              -e ION_LLM_BASE_URL=${{ secrets.ION_LLM_BASE_URL }} \
-              -e ION_LLM_API_KEY=${{ secrets.ION_LLM_API_KEY }} \
+              -e ION_BOOTSTRAP_USERNAME=${{ secrets.ION_BOOTSTRAP_USERNAME }} \
+              -e ION_BOOTSTRAP_PASSWORD=${{ secrets.ION_BOOTSTRAP_PASSWORD }} \
+              -e ION_BOOTSTRAP_ROLE=${{ secrets.ION_BOOTSTRAP_ROLE }} \
+              -e ION_BOOTSTRAP_DISPLAY_NAME=${{ secrets.ION_BOOTSTRAP_DISPLAY_NAME }} \
+              -e ION_LLM_BOOTSTRAP_BASE_URL=${{ secrets.ION_LLM_BASE_URL }} \
+              -e ION_LLM_BOOTSTRAP_API_KEY=${{ secrets.ION_LLM_API_KEY }} \
               -p 80:8080 \
               $IMAGE
           EOF
