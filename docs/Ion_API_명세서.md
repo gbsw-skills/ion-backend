@@ -295,7 +295,9 @@
 
 **Response 202 Accepted**
 
-서버는 메시지를 저장하고 LLM 처리를 비동기 시작. 응답 스트리밍은 `/stream` 엔드포인트에서 수신.
+서버는 메시지를 저장하고 LLM 처리를 비동기 시작. 응답 스트리밍은 `/stream` 엔드포인트에서 수신한다.
+
+프론트엔드는 가능하면 메시지 전송 전에 `/stream`을 먼저 연결한 뒤 `POST /messages`를 호출한다. 백엔드는 스트림 연결 전에 생성된 빠른 LLM 이벤트를 세션별로 잠깐 버퍼링해 재전송하지만, 실시간 토큰 표시와 재연결 안정성을 위해 이 순서를 권장한다.
 
 ```json
 {
@@ -354,6 +356,86 @@ data: {"messageId": 1235, "finishReason": "stop"}
 | `token` | AI 응답 토큰 조각 |
 | `done` | 스트리밍 완료, `messageId`는 저장된 assistant 메시지 ID |
 | `error` | LLM 오류 발생 시 에러 정보 |
+
+**프론트엔드 호출 순서**
+
+1. `POST /api/v1/chat/sessions`로 세션 생성
+2. `GET /api/v1/chat/sessions/{sessionId}/stream` SSE 연결
+3. SSE 연결이 열린 뒤 `POST /api/v1/chat/sessions/{sessionId}/messages`로 사용자 메시지 전송
+4. `token` 이벤트를 이어 붙여 화면에 표시
+5. `done` 이벤트 수신 시 스트림 종료 처리 후 필요하면 메시지 목록 재조회
+
+브라우저 기본 `EventSource`는 `Authorization` 헤더를 직접 넣을 수 없다. 현재 인증은 `Authorization: Bearer {accessToken}` 헤더를 사용하므로 프론트엔드는 `@microsoft/fetch-event-source` 같은 fetch 기반 SSE 클라이언트를 사용한다.
+
+```ts
+import { fetchEventSource } from "@microsoft/fetch-event-source";
+
+const API_BASE_URL = "http://localhost:8080";
+
+export async function sendChatMessage(
+  sessionId: string,
+  accessToken: string,
+  content: string,
+  onToken: (token: string) => void,
+) {
+  const abortController = new AbortController();
+  let opened = false;
+
+  const streamPromise = fetchEventSource(
+    `${API_BASE_URL}/api/v1/chat/sessions/${sessionId}/stream`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "text/event-stream",
+      },
+      signal: abortController.signal,
+      async onopen(response) {
+        if (!response.ok) {
+          throw new Error(`SSE 연결 실패: ${response.status}`);
+        }
+        opened = true;
+      },
+      onmessage(event) {
+        if (event.event === "token") {
+          onToken(JSON.parse(event.data).token);
+        }
+        if (event.event === "done") {
+          abortController.abort();
+        }
+        if (event.event === "error") {
+          const error = JSON.parse(event.data);
+          abortController.abort();
+          throw new Error(error.message);
+        }
+      },
+    },
+  );
+
+  while (!opened) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+
+  const messageResponse = await fetch(
+    `${API_BASE_URL}/api/v1/chat/sessions/${sessionId}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ content }),
+    },
+  );
+
+  if (!messageResponse.ok) {
+    abortController.abort();
+    throw new Error(`메시지 전송 실패: ${messageResponse.status}`);
+  }
+
+  await streamPromise;
+}
+```
 
 **오류 이벤트**
 
@@ -684,15 +766,15 @@ data: {"code": "LLM_001", "message": "LLM 서버에 연결할 수 없습니다."
 
 ```json
 {
-  "name": "gpt-4o-prod",
-  "baseUrl": "https://api.openai.com",
-  "apiKey": "sk-...",
-  "model": "gpt-4o-mini",
+  "name": "cerebras-gpt-oss-120b",
+  "baseUrl": "https://api.cerebras.ai",
+  "apiKey": "csk-...",
+  "model": "gpt-oss-120b",
   "systemPrompt": "당신은 경북소마고 전용 AI 어시스턴트 Ion입니다.",
-  "temperature": 0.4,
-  "maxTokens": 2048,
+  "temperature": 0.7,
+  "maxTokens": 1024,
   "enabled": true,
-  "isDefault": false
+  "isDefault": true
 }
 ```
 
@@ -701,7 +783,7 @@ data: {"code": "LLM_001", "message": "LLM 서버에 연결할 수 없습니다."
 | 항목 | 설명 |
 |------|------|
 | `name` | 엔드포인트 식별용 고유 이름 |
-| `baseUrl` | OpenAI 호환 API 서버 주소 |
+| `baseUrl` | OpenAI 호환 API 서버 주소. 경로 `/v1/chat/completions`는 백엔드가 자동으로 붙이므로 `https://api.cerebras.ai`처럼 origin까지만 입력 |
 | `enabled` | 비활성화 시 채팅 라우팅 대상에서 제외 |
 | `isDefault` | `true`면 기존 기본 엔드포인트의 기본 플래그 해제 |
 | 첫 엔드포인트 생성 | 자동으로 `enabled=true`, `isDefault=true` 처리 |
@@ -713,15 +795,15 @@ data: {"code": "LLM_001", "message": "LLM 서버에 연결할 수 없습니다."
   "success": true,
   "data": {
     "id": 2,
-    "name": "gpt-4o-prod",
-    "baseUrl": "https://api.openai.com",
-    "apiKey": "sk-...",
-    "model": "gpt-4o-mini",
+    "name": "cerebras-gpt-oss-120b",
+    "baseUrl": "https://api.cerebras.ai",
+    "apiKey": "csk-...",
+    "model": "gpt-oss-120b",
     "systemPrompt": "당신은 경북소마고 전용 AI 어시스턴트 Ion입니다.",
-    "temperature": 0.4,
-    "maxTokens": 2048,
+    "temperature": 0.7,
+    "maxTokens": 1024,
     "enabled": true,
-    "isDefault": false,
+    "isDefault": true,
     "createdAt": "2026-04-22T09:00:00Z",
     "updatedAt": "2026-04-22T09:00:00Z"
   },

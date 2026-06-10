@@ -363,6 +363,19 @@ public class OpenAiCompatibleClient {
 | `ION_LLM_BOOTSTRAP_TEMPERATURE` | `0.7` | 최초 기본 엔드포인트 temperature |
 | `ION_LLM_BOOTSTRAP_MAX_TOKENS` | `1024` | 최초 기본 엔드포인트 max tokens |
 
+OpenAI 호환 서버의 `baseUrl`에는 `/v1/chat/completions` 경로를 포함하지 않는다. 백엔드의 `OpenAiCompatibleClient`가 `POST {baseUrl}/v1/chat/completions`로 호출한다.
+
+**Cerebras 예시**
+
+```env
+ION_LLM_BOOTSTRAP_NAME=cerebras-gpt-oss-120b
+ION_LLM_BOOTSTRAP_BASE_URL=https://api.cerebras.ai
+ION_LLM_BOOTSTRAP_API_KEY=csk-...
+ION_LLM_BOOTSTRAP_MODEL=gpt-oss-120b
+ION_LLM_BOOTSTRAP_TEMPERATURE=0.7
+ION_LLM_BOOTSTRAP_MAX_TOKENS=1024
+```
+
 ---
 
 ## 6. 메시지 큐 설계 (RabbitMQ)
@@ -552,10 +565,10 @@ ION_JWT_ACCESS_EXPIRY=900
 ION_JWT_REFRESH_EXPIRY=604800
 
 # LLM bootstrap seed (최초 1회 DB 초기값)
-ION_LLM_BOOTSTRAP_NAME=default-ollama
-ION_LLM_BOOTSTRAP_BASE_URL=http://localhost:11434
-ION_LLM_BOOTSTRAP_API_KEY=ollama
-ION_LLM_BOOTSTRAP_MODEL=ion-model
+ION_LLM_BOOTSTRAP_NAME=cerebras-gpt-oss-120b
+ION_LLM_BOOTSTRAP_BASE_URL=https://api.cerebras.ai
+ION_LLM_BOOTSTRAP_API_KEY=csk-...
+ION_LLM_BOOTSTRAP_MODEL=gpt-oss-120b
 ION_LLM_BOOTSTRAP_SYSTEM_PROMPT=당신은 경북소마고 전용 AI 어시스턴트 Ion입니다.
 ION_LLM_BOOTSTRAP_TEMPERATURE=0.7
 ION_LLM_BOOTSTRAP_MAX_TOKENS=1024
