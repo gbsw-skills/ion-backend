@@ -291,6 +291,8 @@ data: {"id":"chatcmpl-xxx","object":"chat.completion.chunk","choices":[{"delta":
 data: [DONE]
 ```
 
+공급자에 따라 `choices[].delta.reasoning` 같은 부가 필드가 `content`보다 먼저 올 수 있다. Ion은 사용자에게 노출하고 저장할 답변 본문으로 `choices[0].delta.content`만 이어 붙이며, `reasoning`, `role`, 빈 delta, usage 등은 무시한다.
+
 **비스트리밍 응답 (stream: false)**
 
 ```json
@@ -339,6 +341,8 @@ public class OpenAiCompatibleClient {
     }
 }
 ```
+
+`WebClient`가 `text/event-stream`을 문자열로 디코딩할 때 공급자의 원시 SSE 라인(`data: {...}`)이 그대로 들어올 수도 있고, `data:` 접두사가 제거된 JSON payload(`{...}`)만 들어올 수도 있다. 따라서 LLM 클라이언트는 두 입력 형태를 모두 정규화한 뒤 `[DONE]` 전까지 JSON chunk를 파싱한다.
 
 ### 5.3 관리자 설정 정책
 

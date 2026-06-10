@@ -14,6 +14,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
+import java.util.Objects;
+
 @Slf4j
 @Component
 public class OpenAiCompatibleClient {
@@ -33,9 +35,9 @@ public class OpenAiCompatibleClient {
                 .bodyValue(request)
                 .retrieve()
                 .bodyToFlux(String.class)
-                .flatMap(raw -> Flux.fromArray(raw.split("\n")))
-                .filter(line -> line.startsWith("data: "))
-                .map(line -> line.substring(6).trim())
+                .flatMap(raw -> Flux.fromArray(raw.split("\\R")))
+                .map(OpenAiCompatibleClient::extractData)
+                .filter(Objects::nonNull)
                 .takeWhile(data -> !data.equals("[DONE]"))
                 .mapNotNull(data -> {
                     try {
@@ -56,6 +58,17 @@ public class OpenAiCompatibleClient {
                     log.error("LLM streaming error: {}", e.getMessage());
                     return new IonException(ErrorCode.LLM_001);
                 });
+    }
+
+    static String extractData(String line) {
+        String trimmed = line.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.startsWith("data:")) {
+            return trimmed.substring(5).trim();
+        }
+        return trimmed;
     }
 
     private WebClient buildClient(LlmEndpointConfig endpoint) {
