@@ -20,6 +20,7 @@ public class SseEmitterService {
 
     private static final int MAX_PENDING_EVENTS = 4096;
     private static final long PENDING_EVENT_TTL_MINUTES = 5L;
+    private static final long COMPLETE_DELAY_MILLIS = 100L;
 
     private final Map<UUID, SseEmitter> emitters = new ConcurrentHashMap<>();
     private final Map<UUID, List<PendingEvent>> pendingEvents = new ConcurrentHashMap<>();
@@ -68,11 +69,12 @@ public class SseEmitterService {
 
     private void sendOrBuffer(UUID sessionId, SseEmitter emitter, PendingEvent event) {
         try {
-            send(emitter, event);
-            if (event.terminal()) {
-                emitter.complete();
-                emitters.remove(sessionId);
-                pendingEvents.remove(sessionId);
+            synchronized (emitter) {
+                send(emitter, event);
+                if (event.terminal()) {
+                    completeAfterFlush(sessionId, emitter);
+                    pendingEvents.remove(sessionId);
+                }
             }
         } catch (IOException e) {
             log.warn("SSE send failed for session {}", sessionId);
@@ -91,11 +93,12 @@ public class SseEmitterService {
         synchronized (events) {
             for (PendingEvent event : events) {
                 try {
-                    send(emitter, event);
-                    if (event.terminal()) {
-                        emitter.complete();
-                        emitters.remove(sessionId);
-                        return;
+                    synchronized (emitter) {
+                        send(emitter, event);
+                        if (event.terminal()) {
+                            completeAfterFlush(sessionId, emitter);
+                            return;
+                        }
                     }
                 } catch (IOException e) {
                     log.warn("SSE replay failed for session {}", sessionId);
@@ -110,6 +113,18 @@ public class SseEmitterService {
         emitter.send(SseEmitter.event()
                 .name(event.name())
                 .data(event.data()));
+    }
+
+    private void completeAfterFlush(UUID sessionId, SseEmitter emitter) {
+        emitters.remove(sessionId, emitter);
+        CompletableFuture.runAsync(
+                () -> {
+                    synchronized (emitter) {
+                        emitter.complete();
+                    }
+                },
+                CompletableFuture.delayedExecutor(COMPLETE_DELAY_MILLIS, TimeUnit.MILLISECONDS)
+        );
     }
 
     private void bufferEvent(UUID sessionId, PendingEvent event) {
