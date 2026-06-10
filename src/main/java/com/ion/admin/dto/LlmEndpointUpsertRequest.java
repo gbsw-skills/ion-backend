@@ -35,7 +35,7 @@ public record LlmEndpointUpsertRequest(
 
         @NotNull(message = "maxTokens는 필수입니다.")
         @Min(value = 1, message = "maxTokens는 1 이상이어야 합니다.")
-        @Max(value = 32768, message = "maxTokens는 32768 이하여야 합니다.")
+        @Max(value = 128000, message = "maxTokens는 128000 이하여야 합니다.")
         Integer maxTokens,
 
         @NotNull(message = "enabled 값은 필수입니다.")
