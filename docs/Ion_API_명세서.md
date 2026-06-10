@@ -291,7 +291,7 @@
 
 | 필드 | 타입 | 필수 | 제약 |
 |------|------|------|------|
-| content | string | ✅ | 최대 2000자, 공백 불가 |
+| content | string | ✅ | 공백 불가 |
 
 **Response 202 Accepted**
 
