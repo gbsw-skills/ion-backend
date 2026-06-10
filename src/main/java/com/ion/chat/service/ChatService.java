@@ -25,6 +25,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ChatService {
 
+    private static final String DEFAULT_SESSION_TITLE = "새 대화";
+    private static final int AUTO_TITLE_LENGTH = 6;
+
     private final ChatSessionRepository sessionRepository;
     private final ChatMessageRepository messageRepository;
     private final UserRepository userRepository;
@@ -37,7 +40,7 @@ public class ChatService {
         ChatSession session = sessionRepository.save(
                 ChatSession.builder()
                         .user(user)
-                        .title("새 대화")
+                        .title(DEFAULT_SESSION_TITLE)
                         .lastActiveAt(Instant.now())
                         .build()
         );
@@ -73,6 +76,9 @@ public class ChatService {
         );
 
         session.updateLastActive();
+        if (DEFAULT_SESSION_TITLE.equals(session.getTitle())) {
+            session.updateTitle(generateAutoTitle(request.content()));
+        }
         sessionRepository.save(session);
 
         return toMessageResponse(userMessage);
@@ -105,5 +111,12 @@ public class ChatService {
 
     private MessageResponse toMessageResponse(ChatMessage m) {
         return new MessageResponse(m.getId(), m.getSessionId(), m.getRole().name(), m.getContent(), m.getCreatedAt());
+    }
+
+    private String generateAutoTitle(String content) {
+        String normalized = content.strip();
+        int titleCodePointCount = Math.min(AUTO_TITLE_LENGTH, normalized.codePointCount(0, normalized.length()));
+        int titleEndIndex = normalized.offsetByCodePoints(0, titleCodePointCount);
+        return normalized.substring(0, titleEndIndex) + "...";
     }
 }
