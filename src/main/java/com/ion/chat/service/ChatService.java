@@ -103,7 +103,7 @@ public class ChatService {
         if (messageRepository.countBySessionIdAndRole(sessionId, ChatMessage.Role.user) != 1) {
             return;
         }
-        chatTitleService.generateTitleAsync(sessionId, userQuestion);
+        chatTitleService.generateTitle(sessionId, userQuestion);
     }
 
     public SseEmitter createSseEmitter(UUID sessionId, Long userId) {

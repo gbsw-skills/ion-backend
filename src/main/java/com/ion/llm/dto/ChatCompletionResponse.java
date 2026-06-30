@@ -8,10 +8,10 @@ import java.util.List;
 public record ChatCompletionResponse(
         String id,
         String object,
-        List<Choice> choices
+    List<Choice> choices
 ) {
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Choice(int index, Message message) {}
+    public record Choice(Integer index, Message message) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Message(String role, String content) {}

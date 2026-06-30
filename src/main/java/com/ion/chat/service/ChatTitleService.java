@@ -10,7 +10,6 @@ import com.ion.llm.dto.ChatCompletionRequest;
 import com.ion.llm.service.LlmEndpointConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,8 +29,7 @@ public class ChatTitleService {
     private final OpenAiCompatibleClient llmClient;
     private final SseEmitterService sseEmitterService;
 
-    @Async("llmTaskExecutor")
-    public void generateTitleAsync(UUID sessionId, String userQuestion) {
+    public void generateTitle(UUID sessionId, String userQuestion) {
         try {
             LlmEndpointConfig endpoint = llmEndpointConfigService.getDefaultActiveEndpoint();
             String title = requestTitle(endpoint, userQuestion, false);
