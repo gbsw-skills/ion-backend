@@ -61,12 +61,15 @@ public class ChatTitleService {
                         new ChatCompletionRequest.Message("system", retry ? retrySystemPrompt() : systemPrompt()),
                         new ChatCompletionRequest.Message("user", retry ? retryUserPrompt(userQuestion) : userPrompt(userQuestion))
                 ))
-                .stream(false)
+                .stream(true)
                 .temperature(0.1)
                 .maxTokens(Math.min(endpoint.getMaxTokens(), 64))
                 .build();
 
-        return llmClient.chat(endpoint, request).block();
+        return llmClient.streamChat(endpoint, request)
+                .collectList()
+                .map(tokens -> String.join("", tokens))
+                .block();
     }
 
     @Transactional
