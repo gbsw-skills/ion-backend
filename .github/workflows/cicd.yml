@@ -78,23 +78,28 @@ jobs:
             echo "Pulling image: $IMAGE"
             docker pull $IMAGE
 
-            echo "Stopping container..."
+            echo "Stopping old container..."
             docker stop ion-backend || true
             docker rm ion-backend || true
 
-            echo "Starting new container..."
+            echo "Starting new container (internal only, behind nginx)..."
             docker run -d --name ion-backend \
               --network ion-net \
-              -e SPRING_DATASOURCE_URL=${{ secrets.SPRING_DATASOURCE_URL }} \
-              -e SPRING_DATASOURCE_USERNAME=${{ secrets.SPRING_DATASOURCE_USERNAME }} \
-              -e SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD }} \
-              -e ION_JWT_SECRET=${{ secrets.ION_JWT_SECRET }} \
-              -e ION_BOOTSTRAP_USERNAME=${{ secrets.ION_BOOTSTRAP_USERNAME }} \
-              -e ION_BOOTSTRAP_PASSWORD=${{ secrets.ION_BOOTSTRAP_PASSWORD }} \
-              -e ION_BOOTSTRAP_ROLE=${{ secrets.ION_BOOTSTRAP_ROLE }} \
-              -e ION_BOOTSTRAP_DISPLAY_NAME=${{ secrets.ION_BOOTSTRAP_DISPLAY_NAME }} \
-              -e ION_LLM_BOOTSTRAP_BASE_URL=${{ secrets.ION_LLM_BASE_URL }} \
-              -e ION_LLM_BOOTSTRAP_API_KEY=${{ secrets.ION_LLM_API_KEY }} \
-              -p 80:8080 \
+              --restart unless-stopped \
+              -e SPRING_DATASOURCE_URL='${{ secrets.SPRING_DATASOURCE_URL }}' \
+              -e SPRING_DATASOURCE_USERNAME='${{ secrets.SPRING_DATASOURCE_USERNAME }}' \
+              -e SPRING_DATASOURCE_PASSWORD='${{ secrets.SPRING_DATASOURCE_PASSWORD }}' \
+              -e ION_JWT_SECRET='${{ secrets.ION_JWT_SECRET }}' \
+              -e ION_BOOTSTRAP_USERNAME='${{ secrets.ION_BOOTSTRAP_USERNAME }}' \
+              -e ION_BOOTSTRAP_PASSWORD='${{ secrets.ION_BOOTSTRAP_PASSWORD }}' \
+              -e ION_BOOTSTRAP_ROLE='${{ secrets.ION_BOOTSTRAP_ROLE }}' \
+              -e ION_BOOTSTRAP_DISPLAY_NAME='${{ secrets.ION_BOOTSTRAP_DISPLAY_NAME }}' \
+              -e ION_LLM_BOOTSTRAP_BASE_URL='${{ secrets.ION_LLM_BASE_URL }}' \
+              -e ION_LLM_BOOTSTRAP_API_KEY='${{ secrets.ION_LLM_API_KEY }}' \
               $IMAGE
+
+            echo "Reloading nginx to pick up backend's new internal IP..."
+            docker exec ion-front nginx -s reload || true
+
+            echo "Done."
           EOF
