@@ -23,7 +23,7 @@ import java.util.UUID;
 public class ChatTitleService {
 
     private static final String DEFAULT_SESSION_TITLE = "새 대화";
-    private static final int MAX_TITLE_LENGTH = 30;
+    private static final int MAX_TITLE_LENGTH = 15;
 
     private final ChatSessionRepository sessionRepository;
     private final LlmEndpointConfigService llmEndpointConfigService;
@@ -39,11 +39,13 @@ public class ChatTitleService {
                     .messages(List.of(
                             new ChatCompletionRequest.Message("system", """
                                     당신은 채팅방 제목 생성기입니다.
-                                    사용자의 질문을 한국어 제목 하나로 요약하세요.
+                                    사용자의 질문을 한국어 명사형 제목 하나로 요약하세요.
+                                    질문 문장을 그대로 복사하지 말고 핵심 주제만 남기세요.
+                                    제목은 15자 이내로 작성하세요.
                                     답변에는 제목만 포함하세요.
-                                    따옴표, 마침표, 설명 문장은 쓰지 마세요.
+                                    따옴표, 마침표, 물음표, 설명 문장은 쓰지 마세요.
                                     """),
-                            new ChatCompletionRequest.Message("user", userQuestion)
+                            new ChatCompletionRequest.Message("user", "질문: " + userQuestion + "\n제목:")
                     ))
                     .stream(false)
                     .temperature(0.2)
@@ -51,7 +53,12 @@ public class ChatTitleService {
                     .build();
 
             String title = llmClient.chat(endpoint, request).block();
-            updateTitleIfDefault(sessionId, sanitizeTitle(title, userQuestion));
+            String sanitizedTitle = sanitizeTitle(title, userQuestion);
+            if (sanitizedTitle == null) {
+                log.warn("Skipping chat title update because LLM did not generate a summarized title for session {}", sessionId);
+                return;
+            }
+            updateTitleIfDefault(sessionId, sanitizedTitle);
         } catch (IonException e) {
             if (e.getErrorCode() == ErrorCode.LLM_003) {
                 log.debug("Skipping chat title generation because no default LLM endpoint is active");
@@ -74,19 +81,26 @@ public class ChatTitleService {
         }
     }
 
-    private String sanitizeTitle(String title, String fallbackQuestion) {
-        String normalized = (title == null || title.isBlank() ? fallbackQuestion : title)
-                .strip()
+    private String sanitizeTitle(String title, String originalQuestion) {
+        if (title == null || title.isBlank()) {
+            return null;
+        }
+
+        String normalized = title.strip()
                 .replaceAll("[\\r\\n]+", " ")
                 .replaceAll("\\s+", " ");
 
         normalized = stripWrappingQuotes(normalized);
+        normalized = stripTitlePrefix(normalized);
         if (normalized.endsWith(".")) {
             normalized = normalized.substring(0, normalized.length() - 1).strip();
         }
+        if (normalized.endsWith("?")) {
+            normalized = normalized.substring(0, normalized.length() - 1).strip();
+        }
 
-        if (normalized.isBlank()) {
-            normalized = fallbackQuestion.strip();
+        if (normalized.isBlank() || isSameAsQuestion(normalized, originalQuestion)) {
+            return null;
         }
 
         if (normalized.codePointCount(0, normalized.length()) <= MAX_TITLE_LENGTH) {
@@ -107,5 +121,22 @@ public class ChatTitleService {
             return value.substring(1, value.length() - 1).strip();
         }
         return value;
+    }
+
+    private String stripTitlePrefix(String value) {
+        return value.replaceFirst("^(제목|채팅 제목|요약 제목)\\s*[:：]\\s*", "").strip();
+    }
+
+    private boolean isSameAsQuestion(String title, String question) {
+        return normalizeForComparison(title).equals(normalizeForComparison(question));
+    }
+
+    private String normalizeForComparison(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.strip()
+                .replaceAll("[\\s\\p{Punct}]+", "")
+                .toLowerCase();
     }
 }
