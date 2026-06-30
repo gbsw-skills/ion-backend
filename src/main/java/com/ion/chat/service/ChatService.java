@@ -100,6 +100,9 @@ public class ChatService {
     }
 
     public void triggerTitleGeneration(UUID sessionId, String userQuestion) {
+        if (messageRepository.countBySessionIdAndRole(sessionId, ChatMessage.Role.user) != 1) {
+            return;
+        }
         chatTitleService.generateTitleAsync(sessionId, userQuestion);
     }
 
