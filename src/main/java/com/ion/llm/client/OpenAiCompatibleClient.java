@@ -7,12 +7,14 @@ import com.ion.common.exception.IonException;
 import com.ion.llm.domain.LlmEndpointConfig;
 import com.ion.llm.dto.ChatCompletionChunk;
 import com.ion.llm.dto.ChatCompletionRequest;
+import com.ion.llm.dto.ChatCompletionResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.Objects;
 
@@ -56,6 +58,29 @@ public class OpenAiCompatibleClient {
                 .onErrorMap(e -> {
                     if (e instanceof IonException) return e;
                     log.error("LLM streaming error: {}", e.getMessage());
+                    return new IonException(ErrorCode.LLM_001);
+                });
+    }
+
+    public Mono<String> chat(LlmEndpointConfig endpoint, ChatCompletionRequest request) {
+        return buildClient(endpoint).post()
+                .uri("/v1/chat/completions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(ChatCompletionResponse.class)
+                .mapNotNull(response -> {
+                    if (response.choices() == null || response.choices().isEmpty()) {
+                        return null;
+                    }
+                    ChatCompletionResponse.Message message = response.choices().get(0).message();
+                    return message != null ? message.content() : null;
+                })
+                .filter(content -> content != null && !content.isBlank())
+                .onErrorMap(e -> {
+                    if (e instanceof IonException) return e;
+                    log.error("LLM completion error: {}", e.getMessage());
                     return new IonException(ErrorCode.LLM_001);
                 });
     }

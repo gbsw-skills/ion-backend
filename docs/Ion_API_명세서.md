@@ -241,6 +241,47 @@
 
 ---
 
+### GET `/api/v1/chat/sessions/search` — 채팅 세션 검색
+
+> 인증 필요 | 본인 세션만 조회됨
+
+세션 제목과 메시지 본문에서 검색어를 포함하는 채팅 세션을 최신 활동순으로 조회한다.
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 기본값 | 설명 |
+|----------|------|--------|------|
+| query | string | 필수 | 검색어 |
+| page | integer | 0 | 페이지 번호 |
+| size | integer | 20 | 페이지 크기 |
+
+**Response 200 OK**
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "sessionId": "550e8400-e29b-41d4-a716-446655440000",
+        "title": "내일 급식 메뉴",
+        "lastActiveAt": "2026-04-21T10:00:00Z",
+        "createdAt": "2026-04-21T09:00:00Z"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "last": true
+  },
+  "error": null,
+  "timestamp": "2026-04-21T10:00:00Z"
+}
+```
+
+---
+
 ### DELETE `/api/v1/chat/sessions/{sessionId}` — 세션 삭제
 
 > 인증 필요 | 본인 세션만 삭제 가능
@@ -296,7 +337,7 @@
 **Response 202 Accepted**
 
 서버는 메시지를 저장하고 LLM 처리를 비동기 시작. 응답 스트리밍은 `/stream` 엔드포인트에서 수신한다.
-세션 제목이 기본값인 경우 첫 질문의 앞 6글자에 `...`를 붙인 값으로 자동 변경된다.
+세션 제목이 기본값인 경우 별도 LLM 요청으로 질문 내용을 요약해 채팅 제목을 자동 변경한다.
 
 프론트엔드는 가능하면 메시지 전송 전에 `/stream`을 먼저 연결한 뒤 `POST /messages`를 호출한다. 백엔드는 스트림 연결 전에 생성된 빠른 LLM 이벤트를 세션별로 잠깐 버퍼링해 재전송하지만, 실시간 토큰 표시와 재연결 안정성을 위해 이 순서를 권장한다.
 

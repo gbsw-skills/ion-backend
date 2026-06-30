@@ -39,6 +39,15 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.ok(chatService.getSessions(userId, page, size)));
     }
 
+    @GetMapping("/sessions/search")
+    public ResponseEntity<ApiResponse<PageResponse<SessionResponse>>> searchSessions(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.ok(chatService.searchSessions(userId, query, page, size)));
+    }
+
     @DeleteMapping("/sessions/{sessionId}")
     public ResponseEntity<ApiResponse<Void>> deleteSession(
             @PathVariable UUID sessionId,
@@ -54,6 +63,7 @@ public class ChatController {
             @Valid @RequestBody SendMessageRequest request) {
         MessageResponse response = chatService.sendMessage(sessionId, userId, request);
         // 트랜잭션 커밋 후 비동기 LLM 처리 시작
+        chatService.triggerTitleGeneration(sessionId, response.content());
         chatService.triggerLlmProcessing(sessionId);
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(ApiResponse.ok(response));

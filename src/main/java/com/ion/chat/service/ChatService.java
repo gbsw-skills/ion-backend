@@ -26,13 +26,13 @@ import java.util.UUID;
 public class ChatService {
 
     private static final String DEFAULT_SESSION_TITLE = "새 대화";
-    private static final int AUTO_TITLE_LENGTH = 6;
 
     private final ChatSessionRepository sessionRepository;
     private final ChatMessageRepository messageRepository;
     private final UserRepository userRepository;
     private final SseEmitterService sseEmitterService;
     private final LlmProcessingService llmProcessingService;
+    private final ChatTitleService chatTitleService;
 
     @Transactional
     public SessionResponse createSession(Long userId) {
@@ -51,6 +51,19 @@ public class ChatService {
     public PageResponse<SessionResponse> getSessions(Long userId, int page, int size) {
         return PageResponse.from(
                 sessionRepository.findByUserIdOrderByLastActiveAtDesc(userId, PageRequest.of(page, size))
+                        .map(this::toSessionResponse)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<SessionResponse> searchSessions(Long userId, String query, int page, int size) {
+        String normalizedQuery = query == null ? "" : query.strip();
+        if (normalizedQuery.isBlank()) {
+            return getSessions(userId, page, size);
+        }
+
+        return PageResponse.from(
+                sessionRepository.searchByUserIdAndQuery(userId, normalizedQuery, PageRequest.of(page, size))
                         .map(this::toSessionResponse)
         );
     }
@@ -76,9 +89,6 @@ public class ChatService {
         );
 
         session.updateLastActive();
-        if (DEFAULT_SESSION_TITLE.equals(session.getTitle())) {
-            session.updateTitle(generateAutoTitle(request.content()));
-        }
         sessionRepository.save(session);
 
         return toMessageResponse(userMessage);
@@ -87,6 +97,10 @@ public class ChatService {
     // 트랜잭션 커밋 후 컨트롤러에서 호출
     public void triggerLlmProcessing(UUID sessionId) {
         llmProcessingService.processAsync(sessionId);
+    }
+
+    public void triggerTitleGeneration(UUID sessionId, String userQuestion) {
+        chatTitleService.generateTitleAsync(sessionId, userQuestion);
     }
 
     public SseEmitter createSseEmitter(UUID sessionId, Long userId) {
@@ -113,10 +127,4 @@ public class ChatService {
         return new MessageResponse(m.getId(), m.getSessionId(), m.getRole().name(), m.getContent(), m.getCreatedAt());
     }
 
-    private String generateAutoTitle(String content) {
-        String normalized = content.strip();
-        int titleCodePointCount = Math.min(AUTO_TITLE_LENGTH, normalized.codePointCount(0, normalized.length()));
-        int titleEndIndex = normalized.offsetByCodePoints(0, titleCodePointCount);
-        return normalized.substring(0, titleEndIndex) + "...";
-    }
 }
