@@ -28,6 +28,7 @@ public class ChatTitleService {
     private final ChatSessionRepository sessionRepository;
     private final LlmEndpointConfigService llmEndpointConfigService;
     private final OpenAiCompatibleClient llmClient;
+    private final SseEmitterService sseEmitterService;
 
     @Async("llmTaskExecutor")
     public void generateTitleAsync(UUID sessionId, String userQuestion) {
@@ -69,6 +70,7 @@ public class ChatTitleService {
         if (DEFAULT_SESSION_TITLE.equals(session.getTitle())) {
             session.updateTitle(title);
             sessionRepository.save(session);
+            sseEmitterService.sendTitle(sessionId, title);
         }
     }
 

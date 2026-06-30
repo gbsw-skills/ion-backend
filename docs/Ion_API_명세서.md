@@ -389,6 +389,9 @@ data: {"token": " 급식"}
 event: token
 data: {"token": " 메뉴는"}
 
+event: title
+data: {"title": "내일 급식 메뉴"}
+
 event: done
 data: {"messageId": 1235, "finishReason": "stop"}
 ```
@@ -396,6 +399,7 @@ data: {"messageId": 1235, "finishReason": "stop"}
 | 이벤트 | 설명 |
 |--------|------|
 | `token` | AI 응답 토큰 조각 |
+| `title` | LLM이 생성한 채팅 제목 |
 | `done` | 스트리밍 완료, `messageId`는 저장된 assistant 메시지 ID |
 | `error` | LLM 오류 발생 시 에러 정보 |
 

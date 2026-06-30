@@ -56,6 +56,16 @@ public class SseEmitterService {
         sendOrBuffer(sessionId, emitter, event);
     }
 
+    public void sendTitle(UUID sessionId, String title) {
+        SseEmitter emitter = emitters.get(sessionId);
+        PendingEvent event = new PendingEvent("title", "{\"title\":\"" + escapeJson(title) + "\"}", false);
+        if (emitter == null) {
+            bufferEvent(sessionId, event);
+            return;
+        }
+        sendOrBuffer(sessionId, emitter, event);
+    }
+
     public void sendError(UUID sessionId, String code, String message) {
         SseEmitter emitter = emitters.get(sessionId);
         PendingEvent event = new PendingEvent("error", "{\"code\":\"" + code + "\",\"message\":\"" + escapeJson(message) + "\"}", true);
